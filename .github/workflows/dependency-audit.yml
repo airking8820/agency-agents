@@ -1,0 +1,42 @@
+name: Dependency Audit
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Detect dependency manifests
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for f in package.json package-lock.json pnpm-lock.yaml yarn.lock requirements.txt pyproject.toml Pipfile poetry.lock go.mod Cargo.toml Gemfile; do
+            if [ -f "$f" ]; then
+              echo "Found dependency manifest: $f"
+              found=1
+            fi
+          done
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+
+      - name: Dependency baseline gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.detect.outputs.found }}" = "1" ]; then
+            echo "Dependency manifests detected. Baseline gate passed; add ecosystem-specific audit commands as repo evolves."
+          else
+            echo "No dependency manifests detected; nothing to audit yet."
+          fi

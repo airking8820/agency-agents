@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ci-baseline:
+    name: CI Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Validate markdown/docs presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          md_count=$(find . -type f \( -name '*.md' -o -name '*.mdx' \) | wc -l)
+          echo "Markdown/MDX files found: ${md_count}"
+          if [ "${md_count}" -eq 0 ]; then
+            echo "No markdown files found; unexpected for this repository."
+            exit 1
+          fi
+
+      - name: Validate non-empty tracked files
+        shell: bash
+        run: |
+          set -euo pipefail
+          empty_count=$(git ls-files | while read -r f; do [ ! -s "$f" ] && echo "$f"; done | wc -l)
+          echo "Empty tracked files: ${empty_count}"
+          if [ "${empty_count}" -gt 0 ]; then
+            echo "Found empty tracked files; fail baseline check."
+            git ls-files | while read -r f; do [ ! -s "$f" ] && echo " - $f"; done
+            exit 1
+          fi
